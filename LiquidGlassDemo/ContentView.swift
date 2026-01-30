@@ -1,6 +1,60 @@
 import SwiftUI
 import AppKit
 
+// MARK: - NSTextField wrapper for guaranteed keyboard input
+struct FocusableTextField: NSViewRepresentable {
+    @Binding var text: String
+    var placeholder: String
+    var onSubmit: () -> Void
+
+    func makeNSView(context: Context) -> NSTextField {
+        let textField = NSTextField()
+        textField.placeholderString = placeholder
+        textField.isBordered = false
+        textField.drawsBackground = false
+        textField.font = .systemFont(ofSize: 14)
+        textField.textColor = .white
+        textField.focusRingType = .none
+        textField.cell?.sendsActionOnEndEditing = false
+        textField.delegate = context.coordinator
+        return textField
+    }
+
+    func updateNSView(_ nsView: NSTextField, context: Context) {
+        if nsView.stringValue != text {
+            nsView.stringValue = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: FocusableTextField
+
+        init(_ parent: FocusableTextField) {
+            self.parent = parent
+        }
+
+        func controlTextDidChange(_ obj: Notification) {
+            if let textField = obj.object as? NSTextField {
+                parent.text = textField.stringValue
+            }
+        }
+
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                if !parent.text.isEmpty {
+                    parent.onSubmit()
+                }
+                return true
+            }
+            return false
+        }
+    }
+}
+
 struct ContentView: View {
     var body: some View {
         HStack(spacing: 0) {
@@ -279,39 +333,47 @@ struct MessageBubbleView: View {
 struct InputBarView: View {
     @Binding var messageText: String
     var onSend: () -> Void
-    @FocusState private var isFocused: Bool
 
     var body: some View {
         VStack(spacing: 12) {
-            // Text field
-            HStack(alignment: .bottom, spacing: 12) {
-                TextField("Reply...", text: $messageText, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(.body)
-                    .foregroundStyle(.white)
-                    .focused($isFocused)
-                    .lineLimit(1...5)
-                    .onSubmit {
+            // Text field using NSTextField for guaranteed input
+            HStack(alignment: .center, spacing: 12) {
+                FocusableTextField(
+                    text: $messageText,
+                    placeholder: "Reply...",
+                    onSubmit: {
                         if !messageText.isEmpty {
                             onSend()
                         }
                     }
+                )
+                .frame(height: 20)
 
                 // Send button
-                Button(action: onSend) {
+                Button(action: {
+                    if !messageText.isEmpty {
+                        onSend()
+                    }
+                }) {
                     Image(systemName: "arrow.up")
                         .font(.body.weight(.semibold))
                         .foregroundStyle(.white)
                         .frame(width: 32, height: 32)
+                        .background(Circle().fill(.white.opacity(0.2)))
                 }
                 .buttonStyle(.plain)
-                .glassEffect(.clear.interactive(), in: Circle())
                 .opacity(messageText.isEmpty ? 0.5 : 1.0)
-                .disabled(messageText.isEmpty)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .glassEffect(.clear, in: RoundedRectangle(cornerRadius: 20))
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(.white.opacity(0.15))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .strokeBorder(.white.opacity(0.2), lineWidth: 1)
+            )
 
             // Bottom toolbar
             HStack {
@@ -342,7 +404,7 @@ struct InputBarView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .glassEffect(.clear.interactive(), in: Capsule())
+                .background(Capsule().fill(.white.opacity(0.15)))
             }
             .padding(.horizontal, 4)
         }
