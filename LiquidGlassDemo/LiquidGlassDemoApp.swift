@@ -8,54 +8,64 @@ struct LiquidGlassDemoApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .background(WindowAccessor())
         }
-        // Using .automatic instead of .plain to allow keyboard input
-        .windowStyle(.automatic)
+        .windowStyle(.plain)
     }
 }
 
 // App delegate to ensure proper window behavior
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Ensure the app activates properly
         NSApp.activate(ignoringOtherApps: true)
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
-        // Make sure main window is key
-        if let window = NSApp.windows.first {
-            window.makeKey()
+        // Force window to be key and accept input
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if let window = NSApp.windows.first {
+                window.makeKey()
+                window.makeMain()
+            }
         }
     }
 }
 
-// Configure NSWindow properties
-struct WindowConfigurator: NSViewRepresentable {
+// Access and configure the NSWindow for keyboard input with plain style
+struct WindowAccessor: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
-        let view = KeyableView()
+        let view = KeyInputView()
         DispatchQueue.main.async {
-            if let window = view.window {
-                window.isMovableByWindowBackground = true
-                window.titlebarAppearsTransparent = true
-                window.backgroundColor = .clear
-                // Critical: Make window accept keyboard input
-                window.makeKey()
-                window.makeFirstResponder(nil)
-            }
+            guard let window = view.window else { return }
+
+            // Make window transparent
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.isMovableByWindowBackground = true
+            window.titlebarAppearsTransparent = true
+
+            // Critical: These settings allow keyboard input in plain windows
+            window.styleMask.insert(.titled)  // Hidden but allows key window
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+
+            // Force it to be the key window
+            window.makeKey()
+            window.makeMain()
+
+            print("DEBUG: Window configured for keyboard input")
         }
         return view
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
-        // Ensure window stays key when view updates
-        DispatchQueue.main.async {
-            nsView.window?.makeKey()
-        }
-    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
-// Custom NSView that accepts first responder
-class KeyableView: NSView {
+class KeyInputView: NSView {
     override var acceptsFirstResponder: Bool { true }
-    override func becomeFirstResponder() -> Bool { true }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        window?.makeKey()
+    }
 }
