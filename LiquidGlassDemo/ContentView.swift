@@ -336,18 +336,17 @@ struct InputBarView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            // Text field using NSTextField for guaranteed input
+            // Text field using working NSTextField
             HStack(alignment: .center, spacing: 12) {
-                FocusableTextField(
+                DebugNSTextField(
                     text: $messageText,
-                    placeholder: "Reply...",
                     onSubmit: {
                         if !messageText.isEmpty {
                             onSend()
                         }
                     }
                 )
-                .frame(height: 20)
+                .frame(height: 24)
 
                 // Send button
                 Button(action: {
@@ -407,6 +406,109 @@ struct InputBarView: View {
                 .background(Capsule().fill(.white.opacity(0.15)))
             }
             .padding(.horizontal, 4)
+        }
+    }
+}
+
+// MARK: - Debug View for Testing Input
+struct DebugContentView: View {
+    @State private var text = ""
+    @State private var messages: [String] = []
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("DEBUG: Text Input Test")
+                .font(.title)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(messages, id: \.self) { msg in
+                        Text(msg)
+                            .padding(10)
+                            .background(Color.blue.opacity(0.3))
+                            .cornerRadius(10)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(height: 200)
+            .background(Color.gray.opacity(0.1))
+            .cornerRadius(10)
+
+            // Debug text field
+            DebugNSTextField(text: $text, onSubmit: {
+                if !text.isEmpty {
+                    messages.append(text)
+                    text = ""
+                    print("DEBUG: Message added! Count: \(messages.count)")
+                }
+            })
+            .frame(height: 30)
+            .padding()
+            .background(Color.gray.opacity(0.2))
+            .cornerRadius(10)
+
+            Text("Messages sent: \(messages.count)")
+                .font(.caption)
+
+            Button("Add Test Message") {
+                messages.append("Test \(Date())")
+                print("DEBUG: Button clicked, added test message")
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(40)
+        .frame(width: 500, height: 500)
+    }
+}
+
+struct DebugNSTextField: NSViewRepresentable {
+    @Binding var text: String
+    var onSubmit: () -> Void
+
+    func makeNSView(context: Context) -> NSTextField {
+        let tf = NSTextField()
+        tf.placeholderString = "Type here and press Enter..."
+        tf.delegate = context.coordinator
+        tf.bezelStyle = .roundedBezel
+        tf.isBordered = true
+
+        print("DEBUG: TextField created")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            tf.window?.makeFirstResponder(tf)
+            print("DEBUG: Requested first responder")
+        }
+
+        return tf
+    }
+
+    func updateNSView(_ nsView: NSTextField, context: Context) {
+        if nsView.stringValue != text {
+            nsView.stringValue = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: DebugNSTextField
+        init(_ parent: DebugNSTextField) { self.parent = parent }
+
+        func controlTextDidChange(_ obj: Notification) {
+            if let tf = obj.object as? NSTextField {
+                parent.text = tf.stringValue
+                print("DEBUG: Text = '\(tf.stringValue)'")
+            }
+        }
+
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                print("DEBUG: Enter key pressed!")
+                parent.onSubmit()
+                return true
+            }
+            return false
         }
     }
 }

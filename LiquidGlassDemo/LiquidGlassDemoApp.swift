@@ -8,9 +8,9 @@ struct LiquidGlassDemoApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .background(WindowConfigurator())
         }
-        .windowStyle(.plain)
+        // Using .automatic instead of .plain to allow keyboard input
+        .windowStyle(.automatic)
     }
 }
 
