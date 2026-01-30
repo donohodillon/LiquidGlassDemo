@@ -152,15 +152,24 @@ struct ChatRowView: View {
     }
 }
 
+// MARK: - Message Model
+struct ChatMessage: Identifiable, Equatable {
+    let id = UUID()
+    let content: String
+    let isUser: Bool
+    let timestamp = Date()
+}
+
 // MARK: - Chat Area
 struct ChatAreaView: View {
     @State private var messageText: String = ""
+    @State private var messages: [ChatMessage] = []
 
     var body: some View {
         VStack(spacing: 0) {
             // Chat header
             HStack {
-                Text("New conversation")
+                Text(messages.isEmpty ? "New conversation" : "Conversation")
                     .font(.headline)
                     .foregroundStyle(.white)
 
@@ -184,30 +193,84 @@ struct ChatAreaView: View {
             .padding(.vertical, 16)
 
             // Messages area
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Welcome message
+            ScrollViewReader { proxy in
+                ScrollView {
                     VStack(spacing: 16) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 40))
-                            .foregroundStyle(.white.opacity(0.8))
+                        if messages.isEmpty {
+                            // Welcome message
+                            VStack(spacing: 16) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.white.opacity(0.8))
 
-                        Text("How can I help you today?")
-                            .font(.title2)
-                            .foregroundStyle(.white)
+                                Text("How can I help you today?")
+                                    .font(.title2)
+                                    .foregroundStyle(.white)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 100)
+                        } else {
+                            // Message bubbles
+                            ForEach(messages) { message in
+                                MessageBubbleView(message: message)
+                                    .id(message.id)
+                            }
+                        }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.top, 100)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 20)
                 }
-                .padding(.horizontal, 24)
+                .onChange(of: messages) { _, _ in
+                    if let lastMessage = messages.last {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                        }
+                    }
+                }
             }
 
             Spacer()
 
             // Input area
-            InputBarView(messageText: $messageText)
+            InputBarView(messageText: $messageText, onSend: sendMessage)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 20)
+        }
+    }
+
+    private func sendMessage() {
+        guard !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let newMessage = ChatMessage(content: messageText, isUser: true)
+        messages.append(newMessage)
+        messageText = ""
+    }
+}
+
+// MARK: - Message Bubble
+struct MessageBubbleView: View {
+    let message: ChatMessage
+
+    var body: some View {
+        HStack {
+            if message.isUser {
+                Spacer(minLength: 60)
+            }
+
+            Text(message.content)
+                .font(.body)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .glassEffect(
+                    message.isUser
+                        ? .clear.tint(.blue.opacity(0.4))
+                        : .clear,
+                    in: RoundedRectangle(cornerRadius: 18)
+                )
+
+            if !message.isUser {
+                Spacer(minLength: 60)
+            }
         }
     }
 }
@@ -215,6 +278,7 @@ struct ChatAreaView: View {
 // MARK: - Input Bar
 struct InputBarView: View {
     @Binding var messageText: String
+    var onSend: () -> Void
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -227,9 +291,14 @@ struct InputBarView: View {
                     .foregroundStyle(.white)
                     .focused($isFocused)
                     .lineLimit(1...5)
+                    .onSubmit {
+                        if !messageText.isEmpty {
+                            onSend()
+                        }
+                    }
 
                 // Send button
-                Button(action: sendMessage) {
+                Button(action: onSend) {
                     Image(systemName: "arrow.up")
                         .font(.body.weight(.semibold))
                         .foregroundStyle(.white)
@@ -277,12 +346,6 @@ struct InputBarView: View {
             }
             .padding(.horizontal, 4)
         }
-    }
-
-    private func sendMessage() {
-        guard !messageText.isEmpty else { return }
-        // TODO: Send message to LLM
-        messageText = ""
     }
 }
 
