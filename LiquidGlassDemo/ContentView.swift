@@ -31,7 +31,7 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // App title (draggable)
+            // App title
             HStack {
                 Image(systemName: "bubble.left.and.bubble.right.fill")
                     .font(.title2)
@@ -44,7 +44,6 @@ struct SidebarView: View {
             .padding(.horizontal, 16)
             .padding(.top, 20)
             .padding(.bottom, 16)
-            .windowDraggable()
 
             // New chat button
             Button(action: {}) {
@@ -168,7 +167,7 @@ struct ChatAreaView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Chat header (draggable)
+            // Chat header
             HStack {
                 Text(messages.isEmpty ? "New conversation" : "Conversation")
                     .font(.headline)
@@ -192,7 +191,6 @@ struct ChatAreaView: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
-            .windowDraggable()
 
             // Messages area
             ScrollViewReader { proxy in
@@ -348,41 +346,6 @@ struct InputBarView: View {
             }
             .padding(.horizontal, 4)
         }
-    }
-}
-
-// MARK: - Window Drag Modifier
-struct WindowDraggable: ViewModifier {
-    func body(content: Content) -> some View {
-        content.overlay(WindowDragOverlay())
-    }
-}
-
-struct WindowDragOverlay: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        let view = WindowDragView()
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {}
-}
-
-class WindowDragView: NSView {
-    override func mouseDown(with event: NSEvent) {
-        window?.performDrag(with: event)
-    }
-}
-
-extension View {
-    func windowDraggable() -> some View {
-        modifier(WindowDraggable())
-    }
-}
-
-// Empty background for areas that shouldn't block interaction
-struct WindowDragArea: View {
-    var body: some View {
-        Color.clear
     }
 }
 
