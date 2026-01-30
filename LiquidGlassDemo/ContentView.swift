@@ -14,7 +14,6 @@ struct ContentView: View {
                 .padding(.trailing, 12)
         }
         .frame(minWidth: 900, minHeight: 600)
-        .background(WindowDragArea())
     }
 }
 
@@ -32,18 +31,20 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // App title
+            // App title (draggable)
             HStack {
                 Image(systemName: "bubble.left.and.bubble.right.fill")
                     .font(.title2)
                 Text("Glass Chat")
                     .font(.title2)
                     .fontWeight(.semibold)
+                Spacer()
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 16)
             .padding(.top, 20)
             .padding(.bottom, 16)
+            .windowDraggable()
 
             // New chat button
             Button(action: {}) {
@@ -167,7 +168,7 @@ struct ChatAreaView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Chat header
+            // Chat header (draggable)
             HStack {
                 Text(messages.isEmpty ? "New conversation" : "Conversation")
                     .font(.headline)
@@ -191,6 +192,7 @@ struct ChatAreaView: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
+            .windowDraggable()
 
             // Messages area
             ScrollViewReader { proxy in
@@ -349,8 +351,14 @@ struct InputBarView: View {
     }
 }
 
-// MARK: - Window Drag
-struct WindowDragArea: NSViewRepresentable {
+// MARK: - Window Drag Modifier
+struct WindowDraggable: ViewModifier {
+    func body(content: Content) -> some View {
+        content.overlay(WindowDragOverlay())
+    }
+}
+
+struct WindowDragOverlay: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let view = WindowDragView()
         return view
@@ -362,6 +370,19 @@ struct WindowDragArea: NSViewRepresentable {
 class WindowDragView: NSView {
     override func mouseDown(with event: NSEvent) {
         window?.performDrag(with: event)
+    }
+}
+
+extension View {
+    func windowDraggable() -> some View {
+        modifier(WindowDraggable())
+    }
+}
+
+// Empty background for areas that shouldn't block interaction
+struct WindowDragArea: View {
+    var body: some View {
+        Color.clear
     }
 }
 
