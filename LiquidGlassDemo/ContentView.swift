@@ -468,16 +468,28 @@ struct DebugNSTextField: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSTextField {
         let tf = NSTextField()
-        tf.placeholderString = "Type here and press Enter..."
+        tf.placeholderString = "Reply..."
         tf.delegate = context.coordinator
-        tf.bezelStyle = .roundedBezel
-        tf.isBordered = true
 
-        print("DEBUG: TextField created")
+        // Remove border and background for glass look
+        tf.isBordered = false
+        tf.drawsBackground = false
+        tf.backgroundColor = .clear
+        tf.focusRingType = .none
+
+        // Style text
+        tf.font = .systemFont(ofSize: 14)
+        tf.textColor = .white
+        tf.placeholderAttributedString = NSAttributedString(
+            string: "Reply...",
+            attributes: [
+                .foregroundColor: NSColor.white.withAlphaComponent(0.5),
+                .font: NSFont.systemFont(ofSize: 14)
+            ]
+        )
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             tf.window?.makeFirstResponder(tf)
-            print("DEBUG: Requested first responder")
         }
 
         return tf
