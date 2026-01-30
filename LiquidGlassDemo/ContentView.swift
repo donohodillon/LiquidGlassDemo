@@ -9,6 +9,9 @@ struct ContentView: View {
 
             // Main chat area
             ChatAreaView()
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
+                .padding(.vertical, 12)
+                .padding(.trailing, 12)
         }
         .frame(minWidth: 900, minHeight: 600)
         .background(WindowDragArea())
